@@ -1,9 +1,43 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaUserPlus, FaPhoneAlt, FaChartBar, FaHome, FaEnvelope, FaTasks } from 'react-icons/fa';
+import { LeadsContext } from '../context/LeadsContext';
+import { Bar } from 'react-chartjs-2';
+import 'chart.js/auto';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { leads } = useContext(LeadsContext);
+
+  // Calculate dynamic metrics
+  const totalLeads = leads.length;
+  const newLeads = leads.filter((lead) => lead.status === 'New').length;
+  const upcomingCalls = leads.filter((lead) => {
+    const today = new Date();
+    const lastCallDate = lead.lastCallDate ? new Date(lead.lastCallDate) : null;
+    if (!lastCallDate || !lead.callFrequency) return false;
+
+    const daysSinceLastCall = Math.floor((today - lastCallDate) / (1000 * 60 * 60 * 24));
+    return (
+      (lead.callFrequency === 'Daily' && daysSinceLastCall >= 1) ||
+      (lead.callFrequency === 'Weekly' && daysSinceLastCall >= 7) ||
+      (lead.callFrequency === 'Monthly' && daysSinceLastCall >= 30)
+    );
+  }).length;
+
+  const performance = totalLeads > 0 ? 'Good' : 'Needs Improvement';
+
+  // Chart Data for Total Interactions
+  const interactionChartData = {
+    labels: leads.map((lead) => lead.name),
+    datasets: [
+      {
+        label: 'Total Interactions',
+        data: leads.map((lead) => lead.interactions?.length || 0),
+        backgroundColor: '#007bff',
+      },
+    ],
+  };
 
   const handleLogout = () => {
     navigate('/');
@@ -24,38 +58,23 @@ const Dashboard = () => {
         {/* Sidebar */}
         <aside style={styles.sidebar}>
           <ul style={styles.navList}>
-            <li
-              style={styles.navItem}
-              onClick={() => navigate('/dashboard')}
-            >
+            <li style={styles.navItem} onClick={() => navigate('/dashboard')}>
               <FaHome style={styles.navIcon} />
               Dashboard
             </li>
-            <li
-              style={styles.navItem}
-              onClick={() => navigate('/leads')}
-            >
+            <li style={styles.navItem} onClick={() => navigate('/leads')}>
               <FaUsers style={styles.navIcon} />
               Leads
             </li>
-            <li
-              style={styles.navItem}
-              onClick={() => navigate('/contacts')}
-            >
+            <li style={styles.navItem} onClick={() => navigate('/contacts')}>
               <FaEnvelope style={styles.navIcon} />
               Contacts
             </li>
-            <li
-              style={styles.navItem}
-              onClick={() => navigate('/interactions')}
-            >
+            <li style={styles.navItem} onClick={() => navigate('/interactions')}>
               <FaTasks style={styles.navIcon} />
               Interactions
             </li>
-            <li
-              style={styles.navItem}
-              onClick={() => navigate('/performance')}
-            >
+            <li style={styles.navItem} onClick={() => navigate('/performance')}>
               <FaChartBar style={styles.navIcon} />
               Performance
             </li>
@@ -69,34 +88,39 @@ const Dashboard = () => {
             <div style={styles.card}>
               <FaUsers style={styles.icon} />
               <h3>Total Leads</h3>
-              <p>50</p>
+              <p>{totalLeads}</p>
             </div>
             <div style={styles.card}>
               <FaUserPlus style={styles.icon} />
               <h3>New Leads</h3>
-              <p>10</p>
+              <p>{newLeads}</p>
             </div>
             <div style={styles.card}>
               <FaPhoneAlt style={styles.icon} />
               <h3>Upcoming Calls</h3>
-              <p>5</p>
+              <p>{upcomingCalls}</p>
             </div>
             <div style={styles.card}>
               <FaChartBar style={styles.icon} />
               <h3>Performance</h3>
-              <p>Good</p>
+              <p>{performance}</p>
             </div>
           </div>
 
           {/* Charts and Recent Activity */}
           <div style={styles.mainSection}>
-            <div style={styles.charts}>[Performance Charts]</div>
+            <div style={styles.charts}>
+              <h3>Total Interactions Per Lead</h3>
+              <Bar data={interactionChartData} />
+            </div>
             <div style={styles.recentActivity}>
               <h3>Recent Activity</h3>
               <ul>
-                <li>Lead A - Call Scheduled</li>
-                <li>Lead B - Follow-up Email Sent</li>
-                <li>Lead C - Meeting Scheduled</li>
+                {leads.slice(0, 3).map((lead) => (
+                  <li key={lead.id}>
+                    {lead.name} - Last Interaction: {lead.lastCallDate || 'None'}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -158,9 +182,6 @@ const styles = {
     color: '#fff',
     fontSize: '16px',
     transition: 'background-color 0.3s',
-  },
-  navItemHover: {
-    backgroundColor: '#495057',
   },
   navIcon: {
     marginRight: '10px',

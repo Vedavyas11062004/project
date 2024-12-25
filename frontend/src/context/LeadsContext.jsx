@@ -49,19 +49,27 @@ export const LeadsProvider = ({ children }) => {
     setLeads(updatedLeads);
     saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
   };
+
   const addInteractionToLead = (leadId, interaction) => {
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) =>
-        lead.id === parseInt(leadId)
-          ? { ...lead, interactions: [...(lead.interactions || []), interaction] }
-          : lead
-      )
+    const updatedLeads = leads.map((lead) =>
+      lead.id === parseInt(leadId)
+        ? { ...lead, interactions: [...(lead.interactions || []), interaction] }
+        : lead
     );
+    setLeads(updatedLeads);
+    saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
   };
 
   return (
     <LeadsContext.Provider
-      value={{ leads, addLead, editLead, addContactToLead, deleteContactFromLead, addInteractionToLead }}
+      value={{
+        leads,
+        addLead,
+        editLead,
+        addContactToLead,
+        deleteContactFromLead,
+        addInteractionToLead,
+      }}
     >
       {children}
     </LeadsContext.Provider>

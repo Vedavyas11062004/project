@@ -9,6 +9,7 @@ import { LeadsProvider } from './context/LeadsContext';
 import ContactsManagement from './pages/ContactsManagement';
 import ContactsPage from './pages/ContactsPage';
 import InteractionsPage from './pages/InteractionsPage';
+import PerformanceTracking from './pages/PerformanceTracking';
 const App = () => {
   return (
     <LeadsProvider>
@@ -24,6 +25,7 @@ const App = () => {
         <Route path="/contacts/:id" element={<ContactsManagement />} />
         <Route path="/leads/:id/contacts" element={<ContactsManagement />} />
         <Route path="/interactions" element={<InteractionsPage />} />
+        <Route path="/performance" element={<PerformanceTracking />} />
       </Routes>
     </Router>
     </LeadsProvider>
