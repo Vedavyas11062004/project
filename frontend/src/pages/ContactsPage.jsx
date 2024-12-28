@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LeadsContext } from '../context/LeadsContext';
 
 const ContactsPage = () => {
-  const { leads } = useContext(LeadsContext);
+  const { leads } = useContext(LeadsContext); // Fetch leads from context
   const navigate = useNavigate();
 
   return (
@@ -20,16 +20,16 @@ const ContactsPage = () => {
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead) => (
-              <tr key={lead.id} style={styles.tableRow}>
-                <td style={styles.tableCell}>{lead.id}</td>
+            {leads.map((lead, index) => (
+              <tr key={lead._id} style={styles.tableRow}>
+                <td style={styles.tableCell}>{index + 1}</td>
                 <td style={styles.tableCell}>{lead.name}</td>
                 <td style={styles.tableCell}>
                   <button
-                    onClick={() => navigate(`/contacts/${lead.id}`)}
+                    onClick={() => navigate(`/leads/${lead._id}`)} // Navigate to the LeadDetail page
                     style={styles.viewButton}
                   >
-                    View Contacts
+                    View
                   </button>
                 </td>
               </tr>

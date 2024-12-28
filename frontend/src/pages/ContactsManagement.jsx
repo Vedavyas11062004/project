@@ -1,50 +1,78 @@
-import React, { useContext, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { LeadsContext } from '../context/LeadsContext';
+import axios from '../utils/axiosConfig';
 
 const ContactsManagement = () => {
-  const { id } = useParams();
-  const { leads, addContactToLead, deleteContactFromLead } = useContext(LeadsContext);
+  const { id } = useParams(); // Lead ID from URL
   const navigate = useNavigate();
 
-  const lead = leads.find((lead) => lead.id === parseInt(id));
-  const [contact, setContact] = useState({ name: '', role: '', phone: '', email: '' });
-  const [editingContact, setEditingContact] = useState(null);
+  const [lead, setLead] = useState(null); // Current lead
+  const [contacts, setContacts] = useState([]); // List of contacts
+  const [contact, setContact] = useState({ name: '', role: '', phone: '', email: '' }); // Form state
+  const [editingContact, setEditingContact] = useState(null); // Edit state
 
-  const handleAddOrEditContact = () => {
+  // Fetch lead and contacts data
+  useEffect(() => {
+    const fetchLeadAndContacts = async () => {
+      try {
+        const leadResponse = await axios.get(`/leads/${id}`);
+        const contactsResponse = await axios.get(`/contacts/${id}`);
+        setLead(leadResponse.data);
+        setContacts(contactsResponse.data);
+      } catch (error) {
+        console.error('Error fetching lead or contacts:', error);
+      }
+    };
+    fetchLeadAndContacts();
+  }, [id]);
+
+  // Add or Edit a contact
+  const handleAddOrEditContact = async () => {
     if (!contact.name || !contact.phone || !contact.email || !contact.role) {
       alert('All fields are required!');
       return;
     }
 
-    if (editingContact) {
-      // Edit existing contact
-      lead.contacts = lead.contacts.map((c) =>
-        c.id === editingContact.id ? { ...editingContact, ...contact } : c
-      );
-      setEditingContact(null);
-      alert('Contact updated successfully!');
-    } else {
-      // Add new contact
-      const newContact = { ...contact, id: Date.now() };
-      addContactToLead(lead.id, newContact);
-      alert('Contact added successfully!');
+    try {
+      if (editingContact) {
+        // Update contact
+        const response = await axios.put(`/contacts/${editingContact._id}`, contact);
+        setContacts((prevContacts) =>
+          prevContacts.map((c) => (c._id === editingContact._id ? response.data : c))
+        );
+        alert('Contact updated successfully!');
+        setEditingContact(null);
+      } else {
+        // Add new contact
+        const response = await axios.post(`/contacts/${id}`, contact);
+        setContacts((prevContacts) => [...prevContacts, response.data]);
+        alert('Contact added successfully!');
+      }
+      setContact({ name: '', role: '', phone: '', email: '' });
+    } catch (error) {
+      console.error('Error saving contact:', error);
     }
-
-    setContact({ name: '', role: '', phone: '', email: '' });
   };
 
+  // Delete a contact
+  const handleDeleteContact = async (contactId) => {
+    try {
+      await axios.delete(`/contacts/${contactId}`);
+      setContacts((prevContacts) => prevContacts.filter((c) => c._id !== contactId));
+      alert('Contact deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+    }
+  };
+
+  // Handle editing a contact
   const handleEditContact = (contact) => {
     setEditingContact(contact);
     setContact(contact);
   };
 
-  const handleDeleteContact = (contactId) => {
-    deleteContactFromLead(lead.id, contactId);
-  };
-
   if (!lead) {
-    return <div>Lead not found</div>;
+    return <div>Loading...</div>;
   }
 
   return (
@@ -53,9 +81,7 @@ const ContactsManagement = () => {
 
       {/* Add or Edit Contact Form */}
       <section style={styles.formSection}>
-        <h2 style={styles.subTitle}>
-          {editingContact ? 'Edit Contact' : 'Add New Contact'}
-        </h2>
+        <h2 style={styles.subTitle}>{editingContact ? 'Edit Contact' : 'Add New Contact'}</h2>
         <form style={styles.form}>
           <input
             type="text"
@@ -89,11 +115,7 @@ const ContactsManagement = () => {
             onChange={(e) => setContact({ ...contact, email: e.target.value })}
             style={styles.input}
           />
-          <button
-            type="button"
-            onClick={handleAddOrEditContact}
-            style={styles.addButton}
-          >
+          <button type="button" onClick={handleAddOrEditContact} style={styles.addButton}>
             {editingContact ? 'Update Contact' : 'Add Contact'}
           </button>
           {editingContact && (
@@ -114,7 +136,7 @@ const ContactsManagement = () => {
       {/* Existing Contacts */}
       <section style={styles.contactsSection}>
         <h2 style={styles.subTitle}>Existing Contacts</h2>
-        {lead.contacts?.length > 0 ? (
+        {contacts.length > 0 ? (
           <table style={styles.table}>
             <thead>
               <tr>
@@ -126,23 +148,17 @@ const ContactsManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {lead.contacts.map((contact) => (
-                <tr key={contact.id} style={styles.tableRow}>
+              {contacts.map((contact) => (
+                <tr key={contact._id} style={styles.tableRow}>
                   <td style={styles.tableCell}>{contact.name}</td>
                   <td style={styles.tableCell}>{contact.role}</td>
                   <td style={styles.tableCell}>{contact.phone}</td>
                   <td style={styles.tableCell}>{contact.email}</td>
                   <td style={styles.tableCell}>
-                    <button
-                      onClick={() => handleEditContact(contact)}
-                      style={styles.editButton}
-                    >
+                    <button onClick={() => handleEditContact(contact)} style={styles.editButton}>
                       Edit
                     </button>
-                    <button
-                      onClick={() => handleDeleteContact(contact.id)}
-                      style={styles.deleteButton}
-                    >
+                    <button onClick={() => handleDeleteContact(contact._id)} style={styles.deleteButton}>
                       Delete
                     </button>
                   </td>

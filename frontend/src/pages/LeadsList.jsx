@@ -1,12 +1,38 @@
-import React, { useContext, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LeadsContext } from '../context/LeadsContext';
+import axios from '../utils/axiosConfig';
 
 const LeadsList = () => {
-  const { leads } = useContext(LeadsContext);
-  const navigate = useNavigate();
+  const [leads, setLeads] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const navigate = useNavigate();
+
+  // Fetch leads from the backend
+  useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const response = await axios.get('/leads'); // Ensure this endpoint matches backend routes
+        console.log('Fetched leads:', response.data); // Debugging line
+        setLeads(response.data);
+      } catch (error) {
+        console.error('Error fetching leads:', error);
+      }
+    };
+    fetchLeads();
+  }, []);
+
+  // Handle lead deletion
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/leads/${id}`);
+      setLeads((prevLeads) => prevLeads.filter((lead) => lead._id !== id));
+      alert('Lead deleted successfully.');
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      alert('Failed to delete lead.');
+    }
+  };
 
   // Filter leads based on search term and status filter
   const filteredLeads = leads.filter(
@@ -39,6 +65,7 @@ const LeadsList = () => {
           <option value="New">New</option>
           <option value="Contacted">Contacted</option>
           <option value="Interested">Interested</option>
+          <option value="Closed">Closed</option>
         </select>
         <button
           onClick={() => navigate('/leads/add')}
@@ -62,28 +89,28 @@ const LeadsList = () => {
           <tbody>
             {filteredLeads.length > 0 ? (
               filteredLeads.map((lead) => (
-                <tr key={lead.id} style={styles.tableRow}>
+                <tr key={lead._id} style={styles.tableRow}>
                   <td style={styles.tableCell}>{lead.name}</td>
                   <td style={styles.tableCell}>{lead.status}</td>
-                  <td style={styles.tableCell}>{lead.lastContacted}</td>
+                  <td style={styles.tableCell}>{lead.lastContacted || 'N/A'}</td>
                   <td style={styles.tableCell}>
                     <button
-                      onClick={() => navigate(`/leads/${lead.id}`)}
+                      onClick={() => navigate(`/leads/${lead._id}`)}
                       style={styles.viewButton}
                     >
                       View
                     </button>
                     <button
-                      onClick={() => navigate(`/leads/edit/${lead.id}`)}
+                      onClick={() => navigate(`/leads/edit/${lead._id}`)}
                       style={styles.editButton}
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => navigate(`/leads/${lead.id}/contacts`)}
-                      style={styles.contactsButton}
+                      onClick={() => handleDelete(lead._id)}
+                      style={styles.deleteButton}
                     >
-                      Manage Contacts
+                      Delete
                     </button>
                   </td>
                 </tr>
@@ -117,7 +144,7 @@ const styles = {
   tableCell: { padding: '12px', fontSize: '14px', color: '#333' },
   viewButton: { padding: '6px 12px', backgroundColor: '#28a745', color: '#fff', borderRadius: '4px', marginRight: '8px', cursor: 'pointer' },
   editButton: { padding: '6px 12px', backgroundColor: '#ffc107', color: '#fff', borderRadius: '4px', marginRight: '8px', cursor: 'pointer' },
-  contactsButton: { padding: '6px 12px', backgroundColor: '#17a2b8', color: '#fff', borderRadius: '4px', cursor: 'pointer' },
+  deleteButton: { padding: '6px 12px', backgroundColor: '#dc3545', color: '#fff', borderRadius: '4px', cursor: 'pointer' },
   noData: { textAlign: 'center', padding: '20px', fontSize: '16px', color: '#666' },
 };
 

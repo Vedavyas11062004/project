@@ -1,43 +1,73 @@
-import React, { useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaUserPlus, FaPhoneAlt, FaChartBar, FaHome, FaEnvelope, FaTasks } from 'react-icons/fa';
-import { LeadsContext } from '../context/LeadsContext';
+import axios from '../utils/axiosConfig';
 import { Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { leads } = useContext(LeadsContext);
 
-  // Calculate dynamic metrics
-  const totalLeads = leads.length;
-  const newLeads = leads.filter((lead) => lead.status === 'New').length;
-  const upcomingCalls = leads.filter((lead) => {
-    const today = new Date();
-    const lastCallDate = lead.lastCallDate ? new Date(lead.lastCallDate) : null;
-    if (!lastCallDate || !lead.callFrequency) return false;
-
-    const daysSinceLastCall = Math.floor((today - lastCallDate) / (1000 * 60 * 60 * 24));
-    return (
-      (lead.callFrequency === 'Daily' && daysSinceLastCall >= 1) ||
-      (lead.callFrequency === 'Weekly' && daysSinceLastCall >= 7) ||
-      (lead.callFrequency === 'Monthly' && daysSinceLastCall >= 30)
-    );
-  }).length;
-
-  const performance = totalLeads > 0 ? 'Good' : 'Needs Improvement';
-
-  // Chart Data for Total Interactions
-  const interactionChartData = {
-    labels: leads.map((lead) => lead.name),
+  // State variables for metrics
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [newLeads, setNewLeads] = useState(0);
+  const [upcomingCalls, setUpcomingCalls] = useState(0);
+  const [performance, setPerformance] = useState('Loading...');
+  const [interactionChartData, setInteractionChartData] = useState({
+    labels: [],
     datasets: [
       {
         label: 'Total Interactions',
-        data: leads.map((lead) => lead.interactions?.length || 0),
+        data: [],
         backgroundColor: '#007bff',
       },
     ],
-  };
+  });
+
+  // Fetch dashboard data on component mount
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch all leads
+        const leadsResponse = await axios.get('/leads');
+        const leads = leadsResponse.data;
+
+        // Update total leads and new leads
+        setTotalLeads(leads.length);
+        setNewLeads(leads.filter((lead) => lead.status === 'New').length);
+
+        // Calculate performance
+        setPerformance(leads.length > 10 ? 'Good' : 'Needs Improvement');
+
+        // Calculate upcoming calls
+        const upcomingCallsCount = leads.reduce((count, lead) => {
+          const scheduledCalls = lead.callSchedule?.filter((call) => call.status === 'Scheduled') || [];
+          return count + scheduledCalls.length;
+        }, 0);
+        setUpcomingCalls(upcomingCallsCount);
+
+        // Fetch interaction data for the chart
+        const interactionsResponse = await axios.get('/interactions/dashboard');
+        const interactionData = interactionsResponse.data;
+
+        // Update chart data
+        setInteractionChartData({
+          labels: interactionData.map((item) => item.leadName),
+          datasets: [
+            {
+              label: 'Total Interactions',
+              data: interactionData.map((item) => item.interactionCount),
+              backgroundColor: '#007bff',
+            },
+          ],
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleLogout = () => {
     navigate('/');
@@ -116,9 +146,9 @@ const Dashboard = () => {
             <div style={styles.recentActivity}>
               <h3>Recent Activity</h3>
               <ul>
-                {leads.slice(0, 3).map((lead) => (
-                  <li key={lead.id}>
-                    {lead.name} - Last Interaction: {lead.lastCallDate || 'None'}
+                {interactionChartData.labels.map((label, index) => (
+                  <li key={index}>
+                    {label} - Interactions: {interactionChartData.datasets[0].data[index]}
                   </li>
                 ))}
               </ul>

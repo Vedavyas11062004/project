@@ -1,74 +1,96 @@
 import React, { createContext, useState, useEffect } from 'react';
+import axios from '../utils/axiosConfig';
 
 export const LeadsContext = createContext();
 
 export const LeadsProvider = ({ children }) => {
   const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load leads from Local Storage on initial load
+  // Fetch leads from the backend
   useEffect(() => {
-    const storedLeads = JSON.parse(localStorage.getItem('leads')) || [];
-    setLeads(storedLeads);
+    const fetchLeads = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get('/leads'); // Correct API endpoint
+        setLeads(response.data);
+      } catch (error) {
+        setError('Error fetching leads');
+        console.error('Error fetching leads:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeads();
   }, []);
 
-  // Save leads to Local Storage whenever they change
-  const saveLeadsToLocalStorage = (updatedLeads) => {
-    localStorage.setItem('leads', JSON.stringify(updatedLeads));
+  // Add a new lead
+  const addLead = async (lead) => {
+    try {
+      const response = await axios.post('/leads', lead); // Add lead
+      setLeads((prevLeads) => [...prevLeads, response.data]);
+    } catch (error) {
+      console.error('Error adding lead:', error);
+    }
   };
 
-  const addLead = (newLead) => {
-    const updatedLeads = [...leads, newLead];
-    setLeads(updatedLeads);
-    saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
+  // Edit an existing lead
+  const editLead = async (updatedLead) => {
+    try {
+      const response = await axios.put(`/leads/${updatedLead._id}`, updatedLead); // Update lead
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) => (lead._id === updatedLead._id ? response.data : lead))
+      );
+    } catch (error) {
+      console.error('Error editing lead:', error);
+    }
   };
 
-  const editLead = (updatedLead) => {
-    const updatedLeads = leads.map((lead) =>
-      lead.id === updatedLead.id ? updatedLead : lead
-    );
-    setLeads(updatedLeads);
-    saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
+  // Delete a lead
+  const deleteLead = async (id) => {
+    try {
+      await axios.delete(`/leads/${id}`); // Delete lead
+      setLeads((prevLeads) => prevLeads.filter((lead) => lead._id !== id));
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+    }
   };
 
-  const addContactToLead = (leadId, newContact) => {
-    const updatedLeads = leads.map((lead) =>
-      lead.id === leadId
-        ? { ...lead, contacts: [...(lead.contacts || []), newContact] }
-        : lead
-    );
-    setLeads(updatedLeads);
-    saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
+  // Fetch a lead by ID (with contacts and interactions populated)
+  const fetchLeadById = async (id) => {
+    try {
+      const response = await axios.get(`/leads/${id}`); // Fetch lead details
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching lead by ID:', error);
+      throw error;
+    }
   };
 
-  const deleteContactFromLead = (leadId, contactId) => {
-    const updatedLeads = leads.map((lead) =>
-      lead.id === leadId
-        ? { ...lead, contacts: lead.contacts.filter((contact) => contact.id !== contactId) }
-        : lead
-    );
-    setLeads(updatedLeads);
-    saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
-  };
-
-  const addInteractionToLead = (leadId, interaction) => {
-    const updatedLeads = leads.map((lead) =>
-      lead.id === parseInt(leadId)
-        ? { ...lead, interactions: [...(lead.interactions || []), interaction] }
-        : lead
-    );
-    setLeads(updatedLeads);
-    saveLeadsToLocalStorage(updatedLeads); // Save to Local Storage
+  // Fetch contacts for a specific lead
+  const fetchContactsByLeadId = async (leadId) => {
+    try {
+      const response = await axios.get(`/contacts/${leadId}`); // Fetch contacts for a lead
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      throw error;
+    }
   };
 
   return (
     <LeadsContext.Provider
       value={{
         leads,
+        loading,
+        error,
         addLead,
         editLead,
-        addContactToLead,
-        deleteContactFromLead,
-        addInteractionToLead,
+        deleteLead,
+        fetchLeadById,
+        fetchContactsByLeadId, // Added fetchContactsByLeadId
       }}
     >
       {children}
